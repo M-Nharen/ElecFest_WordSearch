@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tech Events Word Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #e9eef5;
+    --dot: #c5cfdd;
+    --board: #ffffff;
+    --ink: #14213d;
+    --ink-soft: #55647d;
+    --line: #d6deea;
+    --blue: #2359e6;
+    --blue-tint: #cfdcff;
+    --green: #16884f;
+    --green-tint: #dcf3e6;
+    --red-tint: #ffd9d6;
+    --red: #b3261e;
+    --font-ui: "Bricolage Grotesque", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-ui);
+    color: var(--ink);
+    background-color: var(--paper);
+    /* breadboard-style dot matrix */
+    background-image: radial-gradient(var(--dot) 1.2px, transparent 1.3px);
+    background-size: 18px 18px;
+    line-height: 1.45;
+  }
+  .page { max-width: 1080px; margin: 0 auto; padding: clamp(16px, 4vw, 40px); }
+
+  header { margin-bottom: 22px; max-width: 60ch; }
+  h1 { margin: 0 0 6px; font-weight: 800; font-size: clamp(1.7rem, 4.5vw, 2.6rem); letter-spacing: -0.02em; line-height: 1.05; }
+  header p { margin: 0; color: var(--ink-soft); font-size: 1.02rem; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 24px; align-items: start; }
+  @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ---------- board ---------- */
+  .board-wrap { background: var(--board); border: 1.5px solid var(--ink); border-radius: 10px; padding: clamp(8px, 1.8vw, 16px); box-shadow: 5px 5px 0 var(--ink); }
+  .board { container-type: inline-size; width: 100%; max-width: 680px; margin: 0 auto; }
+  #grid { display: grid; gap: 0; width: 100%; user-select: none; -webkit-user-select: none; }
+
+  .cell {
+    aspect-ratio: 1;
+    padding: 0; margin: 0;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    font: 700 3.4cqw/1 var(--font-mono);
+    display: grid; place-items: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    border-radius: 0;
+    transition: background-color .08s;
+  }
+  .cell:hover { background: #f0f4fb; }
+  .cell:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; z-index: 2; position: relative; }
+
+  .cell.preview { background: var(--blue-tint); color: var(--ink); }
+  .cell.start   { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .cell.wrong   { background: var(--red-tint); color: var(--red); }
+  .cell.found-cell { background: var(--green); color: #fff; border-color: #0f7041; cursor: default; }
+  .cell.found-cell.preview { background: #57b784; }
+
+  #status { min-height: 1.6em; margin: 12px 2px 0; font-size: .98rem; color: var(--ink-soft); }
+  #status.good { color: var(--green); font-weight: 600; }
+  #status.bad  { color: var(--red); font-weight: 600; }
+
+  /* ---------- sidebar ---------- */
+  aside { background: var(--board); border: 1.5px solid var(--ink); border-radius: 10px; padding: 18px; }
+  aside h2 { margin: 0 0 4px; font-size: 1.15rem; font-weight: 800; }
+  #count { margin: 0 0 10px; color: var(--ink-soft); font-size: 1.05rem; }
+  #count b { font: 800 2.6rem/1 var(--font-ui); color: var(--ink); margin-right: 4px; }
+  .meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-bottom: 20px; }
+  .meter > i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s ease; }
+
+  .code-box { border: 1.5px dashed var(--ink-soft); border-radius: 8px; padding: 12px; background: #f6f8fc; }
+  .code-box.unlocked { border: 1.5px solid var(--green); background: var(--green-tint); }
+  .code-box label { display: block; font-size: .9rem; color: var(--ink-soft); margin-bottom: 4px; }
+  .code-box.unlocked label { color: var(--green); font-weight: 600; }
+  #code { display: block; font: 700 1.25rem/1.3 var(--font-mono); word-break: break-all; }
+  .code-box .hint { margin: 6px 0 0; font-size: .88rem; color: var(--ink-soft); }
+  #copy { margin-top: 10px; display: none; }
+  .code-box.unlocked #copy { display: inline-block; }
+
+  button.btn { font: 600 .95rem var(--font-ui); padding: 8px 14px; border-radius: 7px; border: 1.5px solid var(--ink); background: var(--board); color: var(--ink); cursor: pointer; }
+  button.btn:hover { background: #f0f4fb; }
+  button.btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+  #reset { margin-top: 16px; border-color: var(--line); color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Tech Events Word Search</h1>
+    <p>Find all seven event names. Click the first letter of a word, then click its last letter. Words run left to right or top to bottom. Spaces are removed.</p>
+  </header>
+
+  <div class="layout">
+    <section aria-label="Word search grid">
+      <div class="board-wrap">
+        <div class="board"><div id="grid" role="group" aria-label="Letter grid"></div></div>
+      </div>
+      <p id="status" role="status" aria-live="polite">Loading puzzle…</p>
+    </section>
+
+    <aside aria-label="Your progress">
+      <h2>Your progress</h2>
+      <p id="count"><b id="found-num">0</b> <span>of 7 found</span></p>
+      <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+
+      <div class="code-box" id="codebox">
+        <label for="code">Your code</label>
+        <output id="code">None yet</output>
+        <p class="hint" id="codehint">Find a word to get your first code. It changes as you find more.</p>
+        <button class="btn" id="copy" type="button">Copy code</button>
+      </div>
+
+      <button class="btn" id="reset" type="button">Start over</button>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORE_KEY = "tech-events-wordsearch:v2";
+
+  const gridEl = document.getElementById("grid");
+  const statusEl = document.getElementById("status");
+  const foundNumEl = document.getElementById("found-num");
+  const countEl = document.getElementById("count");
+  const meterEl = document.getElementById("meter");
+  const codeBox = document.getElementById("codebox");
+  const codeEl = document.getElementById("code");
+  const codeHint = document.getElementById("codehint");
+  const copyBtn = document.getElementById("copy");
+  const resetBtn = document.getElementById("reset");
+
+  let size = 0, total = 7, cells = [];
+  let start = null;              // {r, c} after the first click
+  let previewCells = [];         // cells currently highlighted as preview
+  let token = null;              // signed progress token from the server
+  let busy = false;
+  const found = new Set();
+
+  /* ---------- helpers ---------- */
+  const say = (msg, kind = "") => { statusEl.textContent = msg; statusEl.className = kind; };
+  const cellAt = (r, c) => cells[r][c];
+  const save = (code) => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ token, code: code || null })); } catch (e) {}
+  };
+
+  // Straight line from a to b (same row or same column only), else null.
+  function line(a, b) {
+    const dr = b.r - a.r, dc = b.c - a.c;
+    if (dr !== 0 && dc !== 0) return null;
+    const n = Math.max(Math.abs(dr), Math.abs(dc));
+    const sr = Math.sign(dr), sc = Math.sign(dc);
+    return Array.from({ length: n + 1 }, (_, i) => ({ r: a.r + sr * i, c: a.c + sc * i }));
+  }
+
+  function clearPreview() {
+    previewCells.forEach(el => el.classList.remove("preview"));
+    previewCells = [];
+  }
+  function showPreview(to) {
+    clearPreview();
+    const pts = line(start, to) || [start];
+    pts.forEach(p => {
+      const el = cellAt(p.r, p.c);
+      if (!el.classList.contains("start")) el.classList.add("preview");
+      previewCells.push(el);
+    });
+  }
+  function clearSelection() {
+    clearPreview();
+    if (start) cellAt(start.r, start.c).classList.remove("start");
+    start = null;
+  }
+
+  /* ---------- rendering ---------- */
+  function buildGrid(data) {
+    size = data.size;
+    gridEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    gridEl.innerHTML = "";
+    cells = [];
+    for (let r = 0; r < size; r++) {
+      const row = [];
+      for (let c = 0; c < size; c++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "cell";
+        b.textContent = data.grid[r][c];
+        b.dataset.r = r; b.dataset.c = c;
+        b.setAttribute("aria-label", `${data.grid[r][c]}, row ${r + 1}, column ${c + 1}`);
+        gridEl.appendChild(b);
+        row.push(b);
+      }
+      cells.push(row);
+    }
+  }
+
+  function markFound(id, cellList) {
+    found.add(id);
+    cellList.forEach(([r, c]) => cellAt(r, c).classList.add("found-cell"));
+    updateProgress();
+  }
+
+  function updateProgress() {
+    foundNumEl.textContent = found.size;
+    countEl.setAttribute("aria-label", `${found.size} of ${total} found`);
+    meterEl.style.width = `${(found.size / total) * 100}%`;
+  }
+
+  function showCode(code, count) {
+    codeBox.classList.add("unlocked");
+    codeEl.textContent = code;
+    codeHint.textContent = count === total
+      ? "All words found. Show this code to the organizers."
+      : `Code for ${count} ${count === 1 ? "word" : "words"}. It changes as you find more.`;
+  }
+  function lockCode() {
+    codeBox.classList.remove("unlocked");
+    codeEl.textContent = "None yet";
+    codeHint.textContent = "Find a word to get your first code. It changes as you find more.";
+  }
+
+  /* ---------- server calls ---------- */
+  async function post(url, body) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  async function submit(a, b) {
+    busy = true;
+    clearPreview();
+    const pts = line(a, b);
+    say("Checking…");
+    try {
+      const out = await post("/api/verify", { start: a, end: b, token });
+      if (out.correct) {
+        token = out.token;
+        clearSelection();
+        markFound(out.word_id, out.cells);
+        showCode(out.code, out.found_count);
+        if (out.complete) {
+          say("You found every word!", "good");
+        } else {
+          say(`Correct! ${out.total - out.found_count} to go.`, "good");
+        }
+        save(out.code);
+      } else {
+        pts.forEach(p => cellAt(p.r, p.c).classList.add("wrong"));
+        say("That isn't one of the words. Try again.", "bad");
+        await new Promise(r => setTimeout(r, 450));
+        pts.forEach(p => cellAt(p.r, p.c).classList.remove("wrong"));
+        clearSelection();
+      }
+    } catch (err) {
+      clearSelection();
+      say("Couldn't reach the server. Check your connection and try again.", "bad");
+    } finally {
+      busy = false;
+    }
+  }
+
+  /* ---------- interaction ---------- */
+  gridEl.addEventListener("click", (e) => {
+    const el = e.target.closest(".cell");
+    if (!el || busy) return;
+    const p = { r: +el.dataset.r, c: +el.dataset.c };
+
+    if (!start) {                                   // click 1
+      start = p;
+      el.classList.add("start");
+      say("Now click the last letter of the word.");
+      return;
+    }
+    if (p.r === start.r && p.c === start.c) {       // same cell again: cancel
+      clearSelection();
+      say("Selection cleared.");
+      return;
+    }
+    if (!line(start, p)) {                          // not a straight line: keep start
+      say("Pick a letter in a straight line from the blue one: across or down.", "bad");
+      return;
+    }
+    submit(start, p);                               // click 2
+  });
+
+  function hover(e) {
+    if (!start || busy) return;
+    const el = e.target.closest(".cell");
+    if (el) showPreview({ r: +el.dataset.r, c: +el.dataset.c });
+  }
+  gridEl.addEventListener("mouseover", hover);
+  gridEl.addEventListener("focusin", hover);        // keyboard users get the preview too
+  gridEl.addEventListener("mouseleave", () => { if (start && !busy) { clearPreview(); } });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && start && !busy) { clearSelection(); say("Selection cleared."); }
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(codeEl.textContent); copyBtn.textContent = "Copied"; }
+    catch (e) { copyBtn.textContent = "Select the code and copy it"; }
+    setTimeout(() => { copyBtn.textContent = "Copy code"; }, 1800);
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!confirm("Clear your progress and start over?")) return;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    token = null; found.clear(); clearSelection();
+    cells.flat().forEach(el => el.classList.remove("found-cell", "wrong"));
+    updateProgress(); lockCode();
+    say("Progress cleared. Click a first letter to begin.");
+  });
+
+  /* ---------- startup ---------- */
+  async function init() {
+    try {
+      const data = await (await fetch("/api/puzzle")).json();
+      total = data.total;
+      buildGrid(data);
+      updateProgress();
+
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); } catch (e) {}
+      if (saved && saved.token) {
+        const r = await post("/api/restore", { token: saved.token });
+        if (r.found_count > 0) {
+          token = saved.token;
+          r.found.forEach(f => markFound(f.word_id, f.cells));
+          if (r.code) showCode(r.code, r.found_count);
+          say(r.complete ? "You found every word!" : "Welcome back. Your progress was restored.", r.complete ? "good" : "");
+          return;
+        }
+      }
+      say("Click the first letter of a word to begin.");
+    } catch (err) {
+      say("Couldn't load the puzzle. Refresh the page to try again.", "bad");
+    }
+  }
+  init();
+})();
+</script>
+</body>
+</html>
