@@ -106,7 +106,7 @@
 <div class="page">
   <header>
     <h1>Tech Events Word Search</h1>
-    <p>Find all seven event names. Click the first letter of a word, then click its last letter. Words run left to right or top to bottom. Spaces are removed.</p>
+    <p>Find all eight event names. Click the first letter of a word, then click its last letter. Words run left to right or top to bottom. Spaces are removed.</p>
   </header>
 
   <div class="layout">
@@ -119,7 +119,7 @@
 
     <aside aria-label="Your progress">
       <h2>Your progress</h2>
-      <p id="count"><b id="found-num">0</b> <span>of 7 found</span></p>
+      <p id="count"><b id="found-num">0</b> <span>of <span id="total-num">8</span> found</span></p>
       <div class="meter" aria-hidden="true"><i id="meter"></i></div>
 
       <div class="code-box" id="codebox">
@@ -136,11 +136,12 @@
 
 <script>
 (() => {
-  const STORE_KEY = "tech-events-wordsearch:v2";
+  const STORE_KEY = "tech-events-wordsearch:v3";
 
   const gridEl = document.getElementById("grid");
   const statusEl = document.getElementById("status");
   const foundNumEl = document.getElementById("found-num");
+  const totalNumEl = document.getElementById("total-num");
   const countEl = document.getElementById("count");
   const meterEl = document.getElementById("meter");
   const codeBox = document.getElementById("codebox");
@@ -149,7 +150,7 @@
   const copyBtn = document.getElementById("copy");
   const resetBtn = document.getElementById("reset");
 
-  let size = 0, total = 7, cells = [];
+  let size = 0, total = 8, cells = [];
   let start = null;              // {r, c} after the first click
   let previewCells = [];         // cells currently highlighted as preview
   let token = null;              // signed progress token from the server
@@ -221,6 +222,7 @@
 
   function updateProgress() {
     foundNumEl.textContent = found.size;
+    totalNumEl.textContent = total;
     countEl.setAttribute("aria-label", `${found.size} of ${total} found`);
     meterEl.style.width = `${(found.size / total) * 100}%`;
   }
