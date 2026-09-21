@@ -32,36 +32,37 @@ SECRET = _secret.encode()
 # 18 is the smallest size that fits "Reverse engineering" (18 letters).
 # --------------------------------------------------------------------------
 GRID = [
-    "ZHVERILOGWARSEBALT",
+    "VFLRWYVXLCOVAQDYSE",
+    "FQMLPXAPBJWTNSSMIM",
+    "UFFQHAYGRRHMAQLSGB",
+    "LOIVRTXAMZXQLZEQNE",
+    "YRGNBPLSRGQNOPLNAD",
+    "LARRTZTKOTAZGHUFLD",
+    "RSFCZRZIBVCCCAOAQE",
+    "YYIHIDZTFLJCHFFIUD",
+    "QFVIUWJOWKPPADAJEC",
+    "MKNZGIDIXQGTLNAHSH",
+    "AMEBXFOWQVNRLHUZTA",
+    "WQOHQUAMVSZKEVUNBL",
+    "XELECKARTJEGNIBJCL",
+    "CJJXFNSIEARBGOSGSE",
+    "OFYWTQBMGLDGEHSVNN",
     "REVERSEENGINEERING",
-    "UXXDJKPAJORYTXBIYM",
-    "TWPCBWORKSHOPEPHAC",
-    "VVKDAOZESQSYMPQKNE",
-    "KIITNUAWIREVBIBEAF",
-    "FDOUHQWBGHHWOCICLS",
-    "HTZZTWLINVNIQYAEOB",
-    "MNFDQXCHADDAFYHDGG",
-    "AQVOOJRULMGVYGXZCN",
-    "NQASSBNQQSFDVZPLHA",
-    "QDTLJWLJUAVNDDJGAY",
-    "VIAZOBNUEPOGSTCALJ",
-    "AOLJXCHYSPGDSLMWLO",
-    "EHYLMDIDTDCTKUMGEW",
-    "DATVPYBXWPJLOEZLNI",
-    "ELECKARTPQPXXZNPGV",
-    "JMHFPTIRNWVWCSXSED",
+    "SGPDVMPCBWORKSHOPE",
+    "JQPVERILOGWARSAKTM",
 ]
 SIZE = len(GRID)
 
 # Secret answer key (label is only used for the startup self-check).
 ANSWER_KEY = [
-    {"label": "Eleckart",            "start": (16, 0), "end": (16, 7)},
-    {"label": "Signal quest",        "start": (4, 8),  "end": (14, 8)},
-    {"label": "Reverse engineering", "start": (1, 0),  "end": (1, 17)},
-    {"label": "Analog challenge",    "start": (3, 16), "end": (17, 16)},
-    {"label": "Verilog wars",        "start": (0, 2),  "end": (0, 12)},
-    {"label": "IOH",                 "start": (12, 1), "end": (14, 1)},
-    {"label": "PCB workshop",        "start": (3, 2),  "end": (3, 12)},
+    {"label": "Eleckart",            "start": (12, 1),  "end": (12, 8)},
+    {"label": "Signal quest",        "start": (0, 16),  "end": (10, 16)},
+    {"label": "Reverse engineering", "start": (15, 0),  "end": (15, 17)},
+    {"label": "Analog challenge",    "start": (0, 12),  "end": (14, 12)},
+    {"label": "Verilog wars",        "start": (17, 3),  "end": (17, 13)},
+    {"label": "IOH",                 "start": (12, 13), "end": (14, 13)},
+    {"label": "PCB workshop",        "start": (16, 6),  "end": (16, 16)},
+    {"label": "Embedded challenge",  "start": (0, 17),  "end": (16, 17)},
 ]
 TOTAL = len(ANSWER_KEY)
 
@@ -101,7 +102,7 @@ def _unb64(text: str) -> bytes:
 
 
 def _sign(message: str) -> str:
-    return _b64(hmac.new(SECRET, message.encode(), hashlib.sha256).digest()[:16])
+    return _b64(hmac.new(SECRET, ("v3:" + message).encode(), hashlib.sha256).digest()[:16])
 
 
 def make_token(found: set, nonce: str) -> str:
@@ -123,12 +124,12 @@ def read_token(token):
 
 
 def make_code(count: int, nonce: str) -> str:
-    """A different code for every count, e.g. TE3-1B1CA8-9F2C41AA (3 words found)."""
-    sig = hmac.new(SECRET, f"code:{count}:{nonce}".encode(), hashlib.sha256).hexdigest()[:8]
-    return f"TE{count}-{nonce}-{sig.upper()}"
+    """A different code for every count, e.g. EF3-1B1CA8-9F2C41AA (3 words found)."""
+    sig = hmac.new(SECRET, f"v3-code:{count}:{nonce}".encode(), hashlib.sha256).hexdigest()[:8]
+    return f"EF{count}-{nonce}-{sig.upper()}"
 
 
-_CODE_RE = re.compile(r"^TE([1-9]\d*)-([0-9A-F]{6})-([0-9A-F]{8})$")
+_CODE_RE = re.compile(r"^EF([1-9]\d*)-([0-9A-F]{6})-([0-9A-F]{8})$")
 
 
 def check_code(code: str):
@@ -244,4 +245,4 @@ def check_code_route():
 
 
 if __name__ == "__main__":
-    app.run(port=5000)
+    app.run(debug=True, port=5000)
